@@ -51,7 +51,7 @@ module.exports = class LogSubscriptionsPlugin {
         Type: 'AWS::Lambda::Permission',
         Properties: {
           Action: 'lambda:InvokeFunction',
-          FunctionName: destinationArn, // FunctionName can be an ARN too
+          FunctionName: mainConfig.destinationArn, // FunctionName can be an ARN too
           Principal: principal,
         },
       };
