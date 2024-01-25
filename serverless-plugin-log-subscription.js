@@ -42,24 +42,32 @@ module.exports = class LogSubscriptionsPlugin {
     template.Resources = template.Resources || {};
 
     const mainConfig = this.getConfig(logSubscription);
+    const lambdaPermissionCount = Math.ceil(functions.length / 10);
+
     const permissionLogicalId = `GeneralLogLambdaPermission`;
     if (mainConfig.addLambdaPermission) {
-      const region = service.provider.region;
-      const principal = `logs.${region}.amazonaws.com`;
+      for (let index = 0; index < lambdaPermissionCount; index++) {
+        const region = service.provider.region;
+        const principal = `logs.${region}.amazonaws.com`;
 
-      const lambdaPermission = {
-        Type: 'AWS::Lambda::Permission',
-        Properties: {
-          Action: 'lambda:InvokeFunction',
-          FunctionName: mainConfig.destinationArn, // FunctionName can be an ARN too
-          Principal: principal,
-        },
-      };
+        const lambdaPermission = {
+          Type: 'AWS::Lambda::Permission',
+          Properties: {
+            Action: 'lambda:InvokeFunction',
+            FunctionName: mainConfig.destinationArn, // FunctionName can be an ARN too
+            Principal: principal,
+          },
+        };
 
-      template.Resources[permissionLogicalId] = lambdaPermission;
+        template.Resources[permissionLogicalId + index] = lambdaPermission;
+      }
     }
 
-    Object.keys(functions).forEach(functionName => {
+    let lambdaPersimissionIndex = 0;
+    Object.keys(functions).forEach((functionName, idx) => {
+      if (idx !== 0 && idx % 10 === 0) {
+        lambdaPersimissionIndex++;
+      }
       const fn = functions[functionName];
       const config = this.getConfig(logSubscription, fn);
 
@@ -78,7 +86,7 @@ module.exports = class LogSubscriptionsPlugin {
         const logGroupName = this.getLogGroupName(template, logGroupLogicalId);
 
         if (config.addLambdaPermission && this.isLambdaFunction(destinationArn, template)) {
-          dependencies.push(permissionLogicalId);
+          dependencies.push(permissionLogicalId + lambdaPersimissionIndex);
         }
 
         dependencies.push(logGroupLogicalId);
