@@ -44,7 +44,7 @@ module.exports = class LogSubscriptionsPlugin {
     const permissionLogicalId = `GeneralLogLambdaPermission`;
     let lambdaPersimissionIndex = 0;
     Object.keys(functions).forEach((functionName, idx) => {
-      if (idx !== 0 && idx % 10 === 0) {
+      if (idx !== 0 && idx % 5 === 0) {
         lambdaPersimissionIndex++;
       }
       const fn = functions[functionName];
