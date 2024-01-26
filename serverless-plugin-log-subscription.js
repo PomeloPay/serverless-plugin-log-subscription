@@ -41,12 +41,24 @@ module.exports = class LogSubscriptionsPlugin {
 
     template.Resources = template.Resources || {};
 
+    const mainConfig = this.getConfig(logSubscription);
     const permissionLogicalId = `GeneralLogLambdaPermission`;
-    let lambdaPersimissionIndex = 0;
-    Object.keys(functions).forEach((functionName, idx) => {
-      if (idx !== 0 && idx % 5 === 0) {
-        lambdaPersimissionIndex++;
-      }
+    const region = service.provider.region;
+    const principal = `logs.${region}.amazonaws.com`;
+    const lambdaPermission = {
+      Type: 'AWS::Lambda::Permission',
+      Properties: {
+        Action: 'lambda:InvokeFunction',
+        FunctionName: mainConfig.destinationArn, // FunctionName can be an ARN too
+        Principal: principal,
+        SourceArn: {
+          'Fn::Sub': `arn:aws:logs:\${AWS::Region}:\${AWS::AccountId}:log-group:/aws/lambda/${this.serverless.service.provider.stackName}-*`,
+        },
+      },
+    };
+    template.Resources[permissionLogicalId] = lambdaPermission;
+
+    Object.keys(functions).forEach(functionName => {
       const fn = functions[functionName];
       const config = this.getConfig(logSubscription, fn);
 
@@ -65,7 +77,7 @@ module.exports = class LogSubscriptionsPlugin {
         const logGroupName = this.getLogGroupName(template, logGroupLogicalId);
 
         if (config.addLambdaPermission && this.isLambdaFunction(destinationArn, template)) {
-          dependencies.push(permissionLogicalId + lambdaPersimissionIndex);
+          dependencies.push(permissionLogicalId);
         }
 
         dependencies.push(logGroupLogicalId);
@@ -88,25 +100,6 @@ module.exports = class LogSubscriptionsPlugin {
         template.Resources[logicalId] = subscriptionFilter;
       }
     });
-
-    const mainConfig = this.getConfig(logSubscription);
-    if (mainConfig.addLambdaPermission) {
-      for (let index = 0; index <= lambdaPersimissionIndex; index++) {
-        const region = service.provider.region;
-        const principal = `logs.${region}.amazonaws.com`;
-
-        const lambdaPermission = {
-          Type: 'AWS::Lambda::Permission',
-          Properties: {
-            Action: 'lambda:InvokeFunction',
-            FunctionName: mainConfig.destinationArn, // FunctionName can be an ARN too
-            Principal: principal,
-          },
-        };
-
-        template.Resources[permissionLogicalId + index] = lambdaPermission;
-      }
-    }
   }
 
   async addApiGatewayLogSubscription(service, logSubscription, suffix = '') {
